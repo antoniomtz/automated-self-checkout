@@ -48,6 +48,8 @@
 
 #include "ovms.h"  // NOLINT
 
+#include <opencv2/barcode.hpp>
+
 using namespace std;
 using namespace cv;
 
@@ -772,6 +774,12 @@ void run_stream(std::string mediaPath, GstElement* pipeline, GstElement* appsink
     long long numberOfSkipFrames = 0;
     OVMS_Status* res = NULL;
 
+    // Barcode variables
+    cv::barcode::BarcodeDetector barcodeDetector;        
+    std::vector<cv::String> decoded_info;
+    std::vector<cv::barcode::BarcodeType> decoded_type;
+    std::vector<cv::Point> corners;
+
     while (!shutdown_request) {
         auto startTime = std::chrono::high_resolution_clock::now();
 
@@ -891,6 +899,38 @@ void run_stream(std::string mediaPath, GstElement* pipeline, GstElement* appsink
             }
         } // end lock on inference request to server
 
+        // Barcode detection and decode
+        barcodeDetector.detectAndDecode(img,decoded_info,decoded_type,corners);
+
+        if(!corners.empty())
+        {
+
+            for(int i = 0; i<(int)corners.size(); i+=4)
+            {
+
+                if(decoded_info[i/4].empty())
+                {
+                    cv::line(img, corners[i],corners[i+1],cv::Scalar(255,0,0),2);
+                    cv::line(img, corners[i+1],corners[i+2],cv::Scalar(255,0,0),2);
+                    cv::line(img, corners[i+2],corners[i+3],cv::Scalar(255,0,0),2);
+                    cv::line(img, corners[i],corners[i+3],cv::Scalar(255,0,0),2);
+
+                }
+                else
+                {
+                    cv::line(img, corners[i],corners[i+1],cv::Scalar(0,255,255),2);
+                    cv::line(img, corners[i+1],corners[i+2],cv::Scalar(0,255,255),2);
+                    cv::line(img, corners[i+2],corners[i+3],cv::Scalar(0,255,255),2);
+                    cv::line(img, corners[i],corners[i+3],cv::Scalar(0,255,255),2);
+
+                    cv::putText(img, decoded_type[i/4] + ":  " + decoded_info[i/4],corners[i],cv::FONT_HERSHEY_COMPLEX,
+                            0.8,cv::Scalar(0,0,255));
+                    std::cout<<decoded_type[i/4] + ":  " + decoded_info[i/4]<<std::endl;
+
+                }
+            }
+        }
+
         OVMS_InferenceResponseOutputCount(response, &outputCount);
         outputId = outputCount - 1;
         OVMS_InferenceResponseOutput(response, outputId, &outputName1, &datatype1, &shape1, &dimCount1, &voutputData1, &bytesize1, &bufferType1, &deviceId1);
@@ -1007,28 +1047,15 @@ void print_usage(const char* programName) {
 }
 
 int get_running_servers() {
-    char buffer[128];
-    string cmd = "echo $cid_count";
-    std::string result = "";
-    FILE* pipe = popen(cmd.c_str(), "r");
-    
-    if (!pipe) 
-        throw std::runtime_error("popen() failed!");
-
-    try 
-    {
-        while (fgets(buffer, sizeof buffer, pipe) != NULL) 
-        {
-            result += buffer;
-        }
-    } 
-    catch (...) 
-    {
-        pclose(pipe);
-        throw;
-    }
-    pclose(pipe);
-    return std::stoi(result.c_str());
+    const char * val = std::getenv("cid_count");
+    std::cout << "val: "<<val<<std::endl;
+    if ( val == nullptr ) { 
+        std::cout << "Got null for env variable cid_count, so default it to 0. "<<std::endl;
+         return 0;
+     }
+     else {
+         return std::stoi(val);
+     }
 }
 
 int main(int argc, char** argv) {
