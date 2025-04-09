@@ -85,7 +85,7 @@ services:
 
   evamclient:
     container_name: edge-video-analytics-microservice
-    image: intel/edge-video-analytics-microservice:2.4.0
+    image: intel/edge-video-analytics-microservice:2.3.0
     environment:
       http_proxy: ${http_proxy}
       https_proxy: ${https_proxy}
@@ -102,9 +102,9 @@ services:
       - .env
     volumes:
       - ${RETAIL_USE_CASE_ROOT:-..}/src/extensions:/home/pipeline-server/gvapython
-      - ${RETAIL_USE_CASE_ROOT:-../..}/models:/home/pipeline-server/models
-      - ${RETAIL_USE_CASE_ROOT:-..}/src/pipeline-server/asc:/home/pipeline-server/pipelines
+      - ${RETAIL_USE_CASE_ROOT:-../..}/models:/home/pipeline-server/models      
       - "${RETAIL_USE_CASE_ROOT:-..}/src/pipeline-server/config.json:/home/pipeline-server/config.json"
+      - ${RETAIL_USE_CASE_ROOT:-..}/performance-tools/sample-media:/home/pipeline-server/sample-media
       - "/run/udev:/run/udev:ro"
       - "/dev:/dev"
       - "/tmp:/tmp"
@@ -118,19 +118,19 @@ services:
     devices:
       - "/dev:/dev"
 
-  pipeline-init:
-    image: postman/newman
-    container_name: pipeline-init
-    command: run /postman/pipeline.json -e "/postman/env.json" --verbose
-    environment:
-      http_proxy: ${http_proxy}
-      https_proxy: ${https_proxy}
-      no_proxy: ${no_proxy}
-    env_file:
-      - .env
-    volumes:
-      - ./postman/:/postman
-    network_mode: host
+  # pipeline-init:
+  #   image: postman/newman
+  #   container_name: pipeline-init
+  #   command: run /postman/pipeline.json -e "/postman/env.json" --verbose
+  #   environment:
+  #     http_proxy: ${http_proxy}
+  #     https_proxy: ${https_proxy}
+  #     no_proxy: ${no_proxy}
+  #   env_file:
+  #     - .env
+  #   volumes:
+  #     - ./postman/:/postman
+  #   network_mode: host
 
   mqtt-broker:
     command:
